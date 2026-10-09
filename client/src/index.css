@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 dark:bg-void-950 dark:text-slate-100 antialiased;
+    font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  }
+
+  ::selection {
+    background: rgba(168, 85, 247, 0.7);
+    color: #fff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-purple-500/40 rounded-full;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-purple-500/70;
+  }
+}
+
+@layer components {
+  /* ---------- glassmorphism ---------- */
+  .glass {
+    @apply bg-white/70 dark:bg-white/[0.045] backdrop-blur-xl border border-slate-200/80 dark:border-white/10 shadow-xl shadow-slate-900/5 dark:shadow-black/30;
+  }
+  .glass-soft {
+    @apply bg-white/50 dark:bg-white/[0.03] backdrop-blur-lg border border-slate-200/60 dark:border-white/[0.07];
+  }
+
+  /* ---------- forms ---------- */
+  .label {
+    @apply block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 mb-1.5;
+  }
+  .input {
+    @apply w-full rounded-xl bg-white dark:bg-white/[0.06] border border-slate-300 dark:border-white/10 px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30 transition disabled:opacity-50;
+  }
+  .error-text {
+    @apply text-xs text-red-500 dark:text-red-400 mt-1;
+  }
+
+  /* ---------- buttons ---------- */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-violet-600 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/30 hover:shadow-neon hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl glass px-5 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-purple-500/50 dark:hover:border-purple-500/50 hover:text-purple-600 dark:hover:text-purple-300 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-red-500/10 border border-red-500/40 text-red-600 dark:text-red-400 px-5 py-2.5 text-sm font-semibold hover:bg-red-500/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer;
+  }
+  .btn-sm {
+    @apply px-3.5 py-1.5 text-xs;
+  }
+
+  /* ---------- misc ---------- */
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium border;
+  }
+  .card-hover {
+    @apply transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-purple-500/20 dark:hover:shadow-purple-500/25 hover:border-purple-500/40 dark:hover:border-purple-500/40;
+  }
+  .gradient-text {
+    @apply bg-gradient-to-r from-purple-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent;
+  }
+  .section-title {
+    @apply text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white;
+  }
+  .page-shell {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  .shimmer {
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.12) 25%, rgba(148, 163, 184, 0.28) 50%, rgba(148, 163, 184, 0.12) 75%);
+    background-size: 800px 100%;
+    @apply animate-shimmer rounded-xl;
+  }
+}

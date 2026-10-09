@@ -21,6 +21,7 @@ import HostDashboard from './pages/host/HostDashboard.jsx'
 import HackathonForm from './pages/host/HackathonForm.jsx'
 import HackathonManage from './pages/host/HackathonManage.jsx'
 import NotFound from './pages/NotFound.jsx'
+import Privacy from './pages/Privacy.jsx'
 
 /** Wraps a page with a page-transition animation. */
 function Page({ children }) {
@@ -74,6 +75,7 @@ export default function App() {
             <Route path="/host/hackathons/:id/edit" element={<RoleRoute role="host"><Page><HackathonForm /></Page></RoleRoute>} />
             <Route path="/host/hackathons/:id" element={<RoleRoute role="host"><Page><HackathonManage /></Page></RoleRoute>} />
 
+            <Route path="/privacy" element={<Page><Privacy /></Page>} />
             <Route path="*" element={<Page><NotFound /></Page>} />
           </Routes>
         </AnimatePresence>

@@ -4,10 +4,9 @@ import toast from 'react-hot-toast'
 import api, { apiError } from '../api/axios.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { isValidEmail } from '../utils/format.js'
+import { YEAR_OPTIONS } from '../utils/years.js'
 import SkillPicker from '../components/SkillPicker.jsx'
 import { PageSpinner } from '../components/ProtectedRoute.jsx'
-
-const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year', 'Graduate']
 
 export default function Profile() {
   const { user, refreshMe } = useAuth()
@@ -65,7 +64,7 @@ export default function Profile() {
             name: form.name.trim(),
             college: form.college.trim(),
             branch: form.branch.trim(),
-            year: form.year,
+            year: form.year === '' ? undefined : Number(form.year),
             skills: form.skills,
             github: form.github.trim(),
             linkedin: form.linkedin.trim(),
@@ -135,8 +134,8 @@ export default function Profile() {
                 <label className="label">Year</label>
                 <select className="input" value={form.year} onChange={(e) => set('year', e.target.value)}>
                   <option value="" className="bg-white dark:bg-void-900">Select year</option>
-                  {YEARS.map((y) => (
-                    <option key={y} value={y} className="bg-white dark:bg-void-900">{y}</option>
+                  {YEAR_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value} className="bg-white dark:bg-void-900">{o.label}</option>
                   ))}
                 </select>
               </div>

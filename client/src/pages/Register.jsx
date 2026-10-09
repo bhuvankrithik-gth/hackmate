@@ -5,9 +5,8 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext.jsx'
 import { apiError } from '../api/axios.js'
 import { isValidEmail } from '../utils/format.js'
+import { YEAR_OPTIONS } from '../utils/years.js'
 import SkillPicker from '../components/SkillPicker.jsx'
-
-const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year', 'Graduate']
 
 const studentInit = {
   name: '', email: '', password: '', college: '', branch: '', year: '',
@@ -67,7 +66,7 @@ export default function Register() {
           password: form.password,
           college: form.college.trim(),
           branch: form.branch.trim(),
-          year: form.year,
+          year: Number(form.year),
           skills: form.skills,
           github: form.github.trim(),
           linkedin: form.linkedin.trim(),
@@ -171,8 +170,8 @@ export default function Register() {
                     <label className="label" htmlFor="year">Year *</label>
                     <select id="year" className="input" value={form.year} onChange={(e) => set('year', e.target.value)}>
                       <option value="" className="bg-white dark:bg-void-900">Select year</option>
-                      {YEARS.map((y) => (
-                        <option key={y} value={y} className="bg-white dark:bg-void-900">{y}</option>
+                      {YEAR_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value} className="bg-white dark:bg-void-900">{o.label}</option>
                       ))}
                     </select>
                     {errors.year && <p className="error-text">{errors.year}</p>}

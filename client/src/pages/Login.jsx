@@ -5,11 +5,13 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext.jsx'
 import { apiError } from '../api/axios.js'
 import { isValidEmail } from '../utils/format.js'
+import GoogleSignIn from '../components/GoogleSignIn.jsx'
+import PasswordInput from '../components/PasswordInput.jsx'
 
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login } = useAuth()
+  const { login, googleAuth } = useAuth()
 
   const [form, setForm] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState({})
@@ -28,6 +30,12 @@ export default function Login() {
     return Object.keys(e).length === 0
   }
 
+  const goAfterAuth = (user) => {
+    const from = location.state?.from
+    if (from && from !== '/login' && from !== '/register') navigate(from, { replace: true })
+    else navigate(user.role === 'host' ? '/host' : '/hackathons', { replace: true })
+  }
+
   const submit = async (ev) => {
     ev.preventDefault()
     if (!validate()) return
@@ -35,13 +43,25 @@ export default function Login() {
     try {
       const user = await login(form.email.trim(), form.password)
       toast.success(`Welcome back, ${user.name.split(' ')[0]}! 🚀`)
-      const from = location.state?.from
-      if (from && from !== '/login' && from !== '/register') navigate(from, { replace: true })
-      else navigate(user.role === 'host' ? '/host' : '/hackathons', { replace: true })
+      goAfterAuth(user)
     } catch (err) {
       toast.error(apiError(err, 'Login failed. Check your credentials.'))
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleGoogle = async (idToken) => {
+    try {
+      const user = await googleAuth({ idToken, mode: 'login' })
+      toast.success(`Welcome back, ${user.name.split(' ')[0]}! 🚀`)
+      goAfterAuth(user)
+    } catch (err) {
+      if (err?.response?.status === 404) {
+        toast.error('No account found for this Google email. Please sign up first.')
+      } else {
+        toast.error(apiError(err, 'Google sign-in failed.'))
+      }
     }
   }
 
@@ -81,12 +101,9 @@ export default function Login() {
 
           <div>
             <label className="label" htmlFor="password">Password</label>
-            <input
+            <PasswordInput
               id="password"
-              type="password"
               autoComplete="current-password"
-              className="input"
-              placeholder="••••••••"
               value={form.password}
               onChange={(e) => set('password', e.target.value)}
             />
@@ -96,6 +113,14 @@ export default function Login() {
           <button type="submit" disabled={submitting} className="btn-primary w-full !py-3">
             {submitting ? 'Logging in…' : 'Log in →'}
           </button>
+
+          <div className="flex items-center gap-3 pt-1">
+            <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+            <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500">or</span>
+            <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+          </div>
+
+          <GoogleSignIn text="signin_with" onCredential={handleGoogle} onError={() => toast.error('Google sign-in failed to load.')} />
 
           <p className="text-center font-mono text-[11px] text-slate-400 dark:text-slate-500 pt-1">
             demo: student1@hackmate.demo / hackmate123

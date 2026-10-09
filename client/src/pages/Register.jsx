@@ -7,6 +7,8 @@ import { apiError } from '../api/axios.js'
 import { isValidEmail } from '../utils/format.js'
 import { YEAR_OPTIONS } from '../utils/years.js'
 import SkillPicker from '../components/SkillPicker.jsx'
+import GoogleSignIn from '../components/GoogleSignIn.jsx'
+import PasswordInput from '../components/PasswordInput.jsx'
 
 const studentInit = {
   name: '', email: '', password: '', college: '', branch: '', year: '',
@@ -16,7 +18,7 @@ const hostInit = { name: '', organization: '', email: '', password: '' }
 
 export default function Register() {
   const navigate = useNavigate()
-  const { registerStudent, registerHost } = useAuth()
+  const { registerStudent, registerHost, googleAuth } = useAuth()
   const [role, setRole] = useState('student')
   const [form, setForm] = useState(studentInit)
   const [errors, setErrors] = useState({})
@@ -48,6 +50,57 @@ export default function Register() {
     }
     setErrors(e)
     return Object.keys(e).length === 0
+  }
+
+  // Validates only the role-specific fields (name/email come from Google).
+  const googleValidate = () => {
+    const e = {}
+    if (role === 'student') {
+      if (!form.college.trim()) e.college = 'College is required.'
+      if (!form.branch.trim()) e.branch = 'Branch is required.'
+      if (!form.year) e.year = 'Select your year.'
+      if ((form.skills || []).length === 0) e.skills = 'Add at least one skill — it powers your match score.'
+    } else {
+      if (!form.organization.trim()) e.organization = 'Organization is required.'
+    }
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
+
+  const goAfterSignup = (user) => {
+    navigate(user.role === 'host' ? '/host' : '/hackathons', { replace: true })
+  }
+
+  const handleGoogle = async (idToken) => {
+    if (!googleValidate()) {
+      toast.error('Fill in the highlighted fields first, then continue with Google.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const payload =
+        role === 'student'
+          ? {
+              idToken,
+              mode: 'signup',
+              role: 'student',
+              college: form.college.trim(),
+              branch: form.branch.trim(),
+              year: Number(form.year),
+              skills: form.skills,
+              github: form.github.trim(),
+              linkedin: form.linkedin.trim(),
+              bio: form.bio.trim(),
+            }
+          : { idToken, mode: 'signup', role: 'host', organization: form.organization.trim() }
+      const user = await googleAuth(payload)
+      toast.success(`Welcome aboard, ${user.name.split(' ')[0]}! 🎉`)
+      goAfterSignup(user)
+    } catch (err) {
+      toast.error(apiError(err, 'Google sign-up failed.'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const submit = async (ev) => {
@@ -150,7 +203,7 @@ export default function Register() {
               </div>
               <div>
                 <label className="label" htmlFor="password">Password *</label>
-                <input id="password" type="password" className="input" placeholder="Min. 6 characters" value={form.password} onChange={(e) => set('password', e.target.value)} />
+                <PasswordInput id="password" autoComplete="new-password" placeholder="Min. 6 characters" value={form.password} onChange={(e) => set('password', e.target.value)} />
                 {errors.password && <p className="error-text">{errors.password}</p>}
               </div>
 
@@ -216,6 +269,14 @@ export default function Register() {
             <button type="submit" disabled={submitting} className="btn-primary w-full !py-3">
               {submitting ? 'Creating account…' : `Create ${role} account →`}
             </button>
+
+            <div className="flex items-center gap-3 pt-1">
+              <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+              <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500">or</span>
+              <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+            </div>
+
+            <GoogleSignIn text="signup_with" onCredential={handleGoogle} onError={() => toast.error('Google sign-up failed to load.')} />
           </motion.form>
         </AnimatePresence>
       </motion.div>

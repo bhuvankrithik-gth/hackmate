@@ -44,6 +44,28 @@ router.post(
   authController.login
 );
 
+router.post(
+  '/google',
+  validate([
+    body('idToken').notEmpty().withMessage('idToken is required'),
+    body('mode').optional().isIn(['login', 'signup']).withMessage('mode must be login or signup'),
+    body('role').optional().isIn(['student', 'host']).withMessage('role must be student or host'),
+    body('college').optional().trim(),
+    body('branch').optional().trim(),
+    body('year')
+      .optional()
+      .isInt({ min: 1, max: 6 })
+      .withMessage('year must be between 1 and 6')
+      .toInt(),
+    ...v.skillArray('skills'),
+    body('github').optional().trim(),
+    body('linkedin').optional().trim(),
+    body('bio').optional().trim().isLength({ max: 1000 }),
+    body('organization').optional().trim(),
+  ]),
+  authController.googleAuth
+);
+
 router.get('/me', requireAuth, authController.me);
 
 module.exports = router;

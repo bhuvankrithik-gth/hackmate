@@ -68,6 +68,12 @@ export function AuthProvider({ children }) {
     return data.user
   }
 
+  const googleAuth = async (payload) => {
+    const { data } = await api.post('/auth/google', payload)
+    applyAuth({ token: data.token, user: data.user })
+    return data.user
+  }
+
   const logout = () => {
     clearAuth()
     setAuth(null)
@@ -83,6 +89,7 @@ export function AuthProvider({ children }) {
     login,
     registerStudent,
     registerHost,
+    googleAuth,
     logout,
     refreshMe,
   }

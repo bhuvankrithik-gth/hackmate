@@ -16,7 +16,8 @@ const userSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true, lowercase: true, index: true, unique: true },
-    passwordHash: { type: String, required: true, select: false },
+    passwordHash: { type: String, select: false }, // empty for Google-only accounts
+    googleId: { type: String, unique: true, sparse: true, select: false },
     role: { type: String, enum: ['student', 'host'], required: true },
     // student profile
     college: { type: String, trim: true },
@@ -37,6 +38,7 @@ const userSchema = new Schema(
 // Never leak the password hash through JSON responses.
 function stripSecrets(doc, ret) {
   delete ret.passwordHash;
+  delete ret.googleId;
   delete ret.__v;
   return ret;
 }

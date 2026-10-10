@@ -75,6 +75,8 @@ export default function TeamDetail() {
 
   const isOwner = team.owner === user?._id || team.owner?._id === user?._id
   const members = team.members || []
+  const isMember = members.some((m) => String(m._id) === String(user?._id))
+  const canViewCode = isOwner || isMember
   const openSpots = team.openSpots ?? Math.max(0, (team.maxSize || members.length) - members.length)
   const skillGap = team.skillGap || []
 
@@ -200,7 +202,7 @@ export default function TeamDetail() {
 
           {/* skill gap */}
           <div className="space-y-6">
-            {isOwner && team.joinCode && (
+            {canViewCode && team.joinCode && (
               <div className="glass rounded-2xl p-6 border-dashed">
                 <h2 className="font-bold text-lg text-slate-900 dark:text-white mb-1">🔑 Team invite code</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
@@ -221,6 +223,7 @@ export default function TeamDetail() {
                   >
                     📋 Copy
                   </button>
+                  {isOwner && (
                   <button
                     disabled={codeBusy}
                     onClick={async () => {
@@ -240,6 +243,7 @@ export default function TeamDetail() {
                   >
                     {codeBusy ? '…' : '🔄 New code'}
                   </button>
+                  )}
                 </div>
               </div>
             )}

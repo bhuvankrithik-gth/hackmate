@@ -29,6 +29,7 @@ async function registerStudent(req, res) {
     github,
     linkedin,
     bio,
+    termsAcceptedAt: new Date(),
   });
 
   const token = signToken(user);
@@ -48,6 +49,7 @@ async function registerHost(req, res) {
     passwordHash,
     role: 'host',
     organization,
+    termsAcceptedAt: new Date(),
   });
 
   const token = signToken(user);
@@ -136,6 +138,7 @@ async function googleAuth(req, res) {
       email,
       googleId,
       role: finalRole,
+      termsAcceptedAt: new Date(),
       ...(finalRole === 'student'
         ? { college, branch, year, skills: skills || [], github, linkedin, bio }
         : { organization }),

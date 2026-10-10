@@ -29,6 +29,8 @@ const userSchema = new Schema(
     bio: { type: String, trim: true, maxlength: 1000 },
     // host profile
     organization: { type: String, trim: true },
+    // legal: when the user accepted the Terms of Service & Privacy Policy
+    termsAcceptedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

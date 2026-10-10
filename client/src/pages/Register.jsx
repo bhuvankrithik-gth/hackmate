@@ -23,6 +23,7 @@ export default function Register() {
   const [form, setForm] = useState(studentInit)
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
+  const [agreed, setAgreed] = useState(false)
 
   const switchRole = (r) => {
     setRole(r)
@@ -40,14 +41,14 @@ export default function Register() {
     if (!form.name.trim()) e.name = 'Name is required.'
     if (!isValidEmail(form.email)) e.email = 'Enter a valid email address.'
     if (!form.password || form.password.length < 6) e.password = 'Password must be at least 6 characters.'
-    if (role === 'student') {
-      if (!form.college.trim()) e.college = 'College is required.'
+    if (role === 'student') {      if (!form.college.trim()) e.college = 'College is required.'
       if (!form.branch.trim()) e.branch = 'Branch is required.'
       if (!form.year) e.year = 'Select your year.'
       if ((form.skills || []).length === 0) e.skills = 'Add at least one skill — it powers your match score.'
     } else {
       if (!form.organization.trim()) e.organization = 'Organization is required.'
     }
+    if (!agreed) e.agreed = 'Please accept the Terms of Service and Privacy Policy to continue.'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -63,6 +64,7 @@ export default function Register() {
     } else {
       if (!form.organization.trim()) e.organization = 'Organization is required.'
     }
+    if (!agreed) e.agreed = 'Please accept the Terms of Service and Privacy Policy to continue.'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -265,6 +267,30 @@ export default function Register() {
                 </>
               )}
             </div>
+
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => {
+                  setAgreed(e.target.checked)
+                  setErrors((er) => ({ ...er, agreed: undefined }))
+                }}
+                className="mt-1 h-4 w-4 shrink-0 accent-purple-600"
+              />
+              <span className="text-sm text-slate-600 dark:text-slate-300">
+                I agree to the{' '}
+                <a href="/terms" target="_blank" rel="noreferrer" className="text-purple-500 dark:text-purple-300 font-semibold hover:underline">
+                  Terms of Service
+                </a>{' '}
+                and{' '}
+                <a href="/privacy" target="_blank" rel="noreferrer" className="text-purple-500 dark:text-purple-300 font-semibold hover:underline">
+                  Privacy Policy
+                </a>
+                .
+              </span>
+            </label>
+            {errors.agreed && <p className="error-text">{errors.agreed}</p>}
 
             <button type="submit" disabled={submitting} className="btn-primary w-full !py-3">
               {submitting ? 'Creating account…' : `Create ${role} account →`}

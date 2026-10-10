@@ -46,6 +46,8 @@ export default function Footer() {
           <p className="text-xs text-slate-400 dark:text-slate-500">© 2026 HackMate. Built for hackers, by hackers.</p>
           <p className="text-xs">
             <Link to="/privacy" className="text-slate-400 dark:text-slate-500 hover:text-purple-500 dark:hover:text-purple-300">Privacy Policy</Link>
+            <span className="mx-2 text-slate-300 dark:text-slate-600">·</span>
+            <Link to="/terms" className="text-slate-400 dark:text-slate-500 hover:text-purple-500 dark:hover:text-purple-300">Terms of Service</Link>
           </p>
           <p className="font-mono text-xs text-slate-400 dark:text-slate-500">
             <span className="text-cyan-500 dark:text-cyan-400">◈</span> ship fast · team up · win big

@@ -18,6 +18,7 @@ function RequestCard({ r, tab, onAction }) {
   const [busy, setBusy] = useState(false)
   const other = tab === 'received' ? r.fromUser : r.toUser
   const teamName = r.team?.name || 'a team'
+  const isJoin = r.kind === 'join'
 
   const act = async (fn, okMsg) => {
     setBusy(true)
@@ -48,10 +49,15 @@ function RequestCard({ r, tab, onAction }) {
           <p className="font-semibold text-slate-900 dark:text-white text-sm">
             {tab === 'received' ? (
               <><span className="text-purple-500 dark:text-purple-300">{other?.name}</span> wants to join <Link to={`/teams/${r.team?._id}`} className="text-cyan-600 dark:text-cyan-300 hover:underline">{teamName}</Link></>
+            ) : isJoin ? (
+              <>You requested to join <Link to={`/teams/${r.team?._id}`} className="text-cyan-600 dark:text-cyan-300 hover:underline">{teamName}</Link></>
             ) : (
               <>You → <span className="text-purple-500 dark:text-purple-300">{other?.name}</span> · <Link to={`/teams/${r.team?._id}`} className="text-cyan-600 dark:text-cyan-300 hover:underline">{teamName}</Link></>
             )}
           </p>
+          <span className={`chip font-mono !text-[10px] ${isJoin ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-600 dark:text-cyan-300' : 'border-purple-500/40 bg-purple-500/10 text-purple-600 dark:text-purple-300'}`}>
+            {isJoin ? '🔑 JOIN REQ' : '✉️ INVITE'}
+          </span>
           <span className={`chip font-mono !text-[10px] ${statusStyle[r.status] || statusStyle.pending}`}>{(r.status || 'pending').toUpperCase()}</span>
         </div>
         {other?.college && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{other.college}{other.branch ? ` · ${other.branch}` : ''}</p>}

@@ -18,6 +18,8 @@ const teamSchema = new Schema(
       },
     },
     isOpen: { type: Boolean, default: true },
+    // Short code friends can use to find this team and request to join.
+    joinCode: { type: String, unique: true, sparse: true, index: true, uppercase: true, trim: true },
   },
   { timestamps: true }
 );

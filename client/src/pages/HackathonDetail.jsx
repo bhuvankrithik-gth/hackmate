@@ -23,6 +23,11 @@ export default function HackathonDetail() {
   const [loading, setLoading] = useState(true)
   const [registering, setRegistering] = useState(false)
   const [announcements, setAnnouncements] = useState([])
+  const [code, setCode] = useState('')
+  const [codeBusy, setCodeBusy] = useState(false)
+  const [codeTeam, setCodeTeam] = useState(null)
+  const [codeError, setCodeError] = useState('')
+  const [joinBusy, setJoinBusy] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -72,6 +77,44 @@ export default function HackathonDetail() {
   const h = data.hackathon
   const open = h.status === 'open'
   const canRegister = !data.isRegistered && open
+
+  const lookupCode = async () => {
+    const trimmed = code.trim().toUpperCase()
+    if (!trimmed) {
+      setCodeError('Enter the invite code your friend shared.')
+      return
+    }
+    setCodeBusy(true)
+    setCodeError('')
+    setCodeTeam(null)
+    try {
+      const { data: res } = await api.get(`/teams/by-code/${encodeURIComponent(trimmed)}`)
+      if (String(res.team.hackathon._id) !== String(h._id)) {
+        setCodeError('That team is competing in a different hackathon.')
+        return
+      }
+      setCodeTeam(res.team)
+    } catch (err) {
+      setCodeError(apiError(err, 'Could not find that team.'))
+    } finally {
+      setCodeBusy(false)
+    }
+  }
+
+  const requestJoin = async () => {
+    if (!codeTeam) return
+    setJoinBusy(true)
+    try {
+      await api.post('/requests/join', { teamId: codeTeam._id })
+      toast.success(`Request sent to ${codeTeam.name} 🎉 — the owner will review it.`)
+      setCodeTeam(null)
+      setCode('')
+    } catch (err) {
+      toast.error(apiError(err, 'Could not send the request.'))
+    } finally {
+      setJoinBusy(false)
+    }
+  }
 
   return (
     <div className="page-shell py-10">
@@ -193,6 +236,52 @@ export default function HackathonDetail() {
                 {formatDate(h.startDate)} → {formatDate(h.endDate)}
               </p>
             </div>
+
+            {data.isRegistered && !data.myTeam && (
+              <div className="glass rounded-2xl p-6">
+                <h2 className="font-bold text-slate-900 dark:text-white mb-1">🔑 Join a friend&rsquo;s team</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                  Got an invite code? Drop it here to find their team and request to join.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => { if (e.key === 'Enter') lookupCode() }}
+                    placeholder="e.g. XK7Q2P"
+                    maxLength={12}
+                    className="input font-mono uppercase tracking-widest text-center"
+                  />
+                  <button onClick={lookupCode} disabled={codeBusy} className="btn-secondary shrink-0">
+                    {codeBusy ? '…' : 'Find'}
+                  </button>
+                </div>
+                {codeError && <p className="mt-2.5 text-xs text-red-500">{codeError}</p>}
+                {codeTeam && (
+                  <div className="mt-4 glass-soft rounded-xl p-4">
+                    <p className="font-semibold text-slate-900 dark:text-white text-sm">{codeTeam.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      👑 {codeTeam.owner?.name} · 👥 {codeTeam.memberCount}/{codeTeam.teamSizeLimit} members
+                      {codeTeam.isOpen === false && ' · 🔒 closed'}
+                    </p>
+                    {codeTeam.description && (
+                      <p className="mt-2 text-xs text-slate-600 dark:text-slate-300 line-clamp-2">{codeTeam.description}</p>
+                    )}
+                    {codeTeam.isMember ? (
+                      <p className="mt-3 text-xs text-emerald-600 dark:text-emerald-400 font-medium">✅ You&rsquo;re already in this team.</p>
+                    ) : codeTeam.myOtherTeam ? (
+                      <p className="mt-3 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                        ⚠ You&rsquo;re already in “{codeTeam.myOtherTeam.name}” for this hackathon.
+                      </p>
+                    ) : (
+                      <button onClick={requestJoin} disabled={joinBusy || codeTeam.isOpen === false} className="btn-primary btn-sm w-full mt-3">
+                        {joinBusy ? 'Sending…' : 'Request to join →'}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </motion.div>

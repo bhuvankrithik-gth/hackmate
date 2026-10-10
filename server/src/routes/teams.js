@@ -1,5 +1,5 @@
 const express = require('express');
-const { body } = require('express-validator');
+const { body, param } = require('express-validator');
 const teamController = require('../controllers/teamController');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
@@ -44,6 +44,14 @@ router.get(
   teamController.searchCandidates
 );
 
+router.get(
+  '/by-code/:code',
+  validate([
+    param('code').trim().notEmpty().withMessage('code is required').isLength({ min: 4, max: 12 }).withMessage('code looks invalid'),
+  ]),
+  teamController.getTeamByCode
+);
+
 router.get('/:id', validate([v.mongoIdParam()]), teamController.getTeam);
 
 router.put(
@@ -58,6 +66,8 @@ router.put(
 );
 
 router.post('/:id/close', validate([v.mongoIdParam()]), teamController.closeTeam);
+
+router.post('/:id/regenerate-code', validate([v.mongoIdParam()]), teamController.regenerateJoinCode);
 
 router.delete('/:id', validate([v.mongoIdParam()]), teamController.deleteTeam);
 

@@ -45,6 +45,7 @@ export default function TeamDetail() {
   const [editForm, setEditForm] = useState({ name: '', description: '', missingSkills: [] })
   const [saving, setSaving] = useState(false)
   const [confirmAction, setConfirmAction] = useState(null) // 'close' | 'delete'
+  const [codeBusy, setCodeBusy] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -199,6 +200,50 @@ export default function TeamDetail() {
 
           {/* skill gap */}
           <div className="space-y-6">
+            {isOwner && team.joinCode && (
+              <div className="glass rounded-2xl p-6 border-dashed">
+                <h2 className="font-bold text-lg text-slate-900 dark:text-white mb-1">🔑 Team invite code</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                  Share this with friends — they enter it on the hackathon page to request a spot.
+                </p>
+                <div className="rounded-xl bg-slate-900 dark:bg-black/40 py-4 text-center">
+                  <span className="font-mono text-3xl font-bold tracking-[0.35em] text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-300">
+                    {team.joinCode}
+                  </span>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(team.joinCode)
+                      toast.success('Code copied 📋')
+                    }}
+                    className="btn-secondary btn-sm flex-1"
+                  >
+                    📋 Copy
+                  </button>
+                  <button
+                    disabled={codeBusy}
+                    onClick={async () => {
+                      if (!window.confirm('Generate a new code? The old one will stop working.')) return
+                      setCodeBusy(true)
+                      try {
+                        const { data } = await api.post(`/teams/${id}/regenerate-code`)
+                        setTeam({ ...team, joinCode: data.joinCode })
+                        toast.success('New code generated 🔄')
+                      } catch (err) {
+                        toast.error(apiError(err, 'Could not regenerate the code.'))
+                      } finally {
+                        setCodeBusy(false)
+                      }
+                    }}
+                    className="btn-secondary btn-sm flex-1"
+                  >
+                    {codeBusy ? '…' : '🔄 New code'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="glass rounded-2xl p-6">
               <h2 className="font-bold text-lg text-slate-900 dark:text-white mb-1">🎯 Skill gap</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Missing skills no member covers yet.</p>

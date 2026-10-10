@@ -19,6 +19,12 @@ function applyPopulate(query) {
   return query;
 }
 
+// For 'join' requests the approver is the team owner; for 'invite' the invitee.
+// Returns the user id that will actually join the team when approved.
+function joinerOf(request) {
+  return request.kind === 'join' ? String(request.fromUser) : String(request.toUser);
+}
+
 // POST /api/requests (student) — invite toUser to join teamId
 async function createRequest(req, res) {
   const { teamId, toUserId, message } = req.body;
@@ -88,6 +94,80 @@ async function createRequest(req, res) {
   return res.status(201).json({ request: populated });
 }
 
+// POST /api/requests/join (student) — request to join teamId (e.g. via invite code)
+async function createJoinRequest(req, res) {
+  const { teamId, message } = req.body;
+
+  const team = await _loadTeamWithHackathon(teamId);
+
+  if (!team.isOpen) throw httpError(400, 'This team is closed to new members');
+
+  const teamSizeLimit = team.hackathon.teamSizeLimit || 4;
+  if (team.members.length >= teamSizeLimit) {
+    throw httpError(400, 'This team is already full');
+  }
+
+  if (_teamFormationClosed(team.hackathon)) {
+    throw httpError(400, 'Team formation is closed for this hackathon');
+  }
+
+  const registered = team.hackathon.participants.some(
+    (p) => String(p._id || p) === String(req.user.id)
+  );
+  if (!registered) {
+    throw httpError(400, 'You must register for this hackathon first');
+  }
+
+  if (_isMember(team, req.user.id)) {
+    throw httpError(400, 'You are already in this team');
+  }
+
+  const otherTeam = await Team.findOne({
+    hackathon: team.hackathon._id,
+    members: req.user.id,
+  });
+  if (otherTeam) {
+    throw httpError(400, 'You are already in a team for this hackathon');
+  }
+
+  const duplicate = await TeamRequest.findOne({
+    team: teamId,
+    fromUser: req.user.id,
+    kind: 'join',
+    status: 'pending',
+  });
+  if (duplicate) throw httpError(409, 'You already have a pending request for this team');
+
+  let request;
+  try {
+    request = await TeamRequest.create({
+      team: teamId,
+      fromUser: req.user.id,
+      toUser: team.owner,
+      kind: 'join',
+      message,
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      throw httpError(409, 'You already have a pending request for this team');
+    }
+    throw err;
+  }
+
+  const fromUser = await require('../models/User').findById(req.user.id).select('name');
+
+  await createNotification({
+    user: team.owner,
+    title: `Join request for ${team.name}`,
+    body: `${fromUser ? fromUser.name : 'Someone'} wants to join your team "${team.name}".`,
+    type: 'team_request',
+    link: '/requests',
+  });
+
+  const populated = await applyPopulate(TeamRequest.findById(request._id));
+  return res.status(201).json({ request: populated });
+}
+
 // GET /api/requests?tab=sent|received (student)
 async function listRequests(req, res) {
   const { tab } = req.query;
@@ -102,18 +182,19 @@ async function listRequests(req, res) {
   return res.status(200).json({ requests });
 }
 
-// PUT /api/requests/:id/accept (toUser only)
+// PUT /api/requests/:id/accept (approver only: invitee for invites, owner for joins)
 async function acceptRequest(req, res) {
   const request = await TeamRequest.findById(req.params.id);
   if (!request) throw httpError(404, 'Request not found');
   if (String(request.toUser) !== String(req.user.id)) {
-    throw httpError(403, 'Only the invited user can accept this request');
+    throw httpError(403, 'Only the recipient can accept this request');
   }
   if (request.status !== 'pending') {
     throw httpError(400, `This request has already been ${request.status}`);
   }
 
   const team = await _loadTeamWithHackathon(request.team);
+  const joinerId = joinerOf(request);
 
   if (_teamFormationClosed(team.hackathon)) {
     throw httpError(400, 'Team formation is closed for this hackathon');
@@ -123,46 +204,58 @@ async function acceptRequest(req, res) {
   if (team.members.length >= teamSizeLimit) {
     throw httpError(400, 'This team is already full');
   }
-  if (_isMember(team, req.user.id)) {
-    throw httpError(400, 'You are already in this team');
+  if (_isMember(team, joinerId)) {
+    throw httpError(400, 'This user is already in the team');
   }
 
   const otherTeam = await Team.findOne({
     hackathon: team.hackathon._id,
-    members: req.user.id,
+    members: joinerId,
   });
   if (otherTeam) {
-    throw httpError(400, 'You are already in a team for this hackathon');
+    throw httpError(400, 'This user is already in a team for this hackathon');
   }
 
-  team.members.push(req.user.id);
+  team.members.push(joinerId);
   if (team.members.length >= teamSizeLimit) team.isOpen = false; // auto-close when full
   await team.save();
 
   request.status = 'accepted';
   await request.save();
 
-  // Notify the inviter…
-  await createNotification({
-    user: request.fromUser,
-    title: 'Invite accepted',
-    body: `Your invite to "${team.name}" was accepted.`,
-    type: 'request_accepted',
-    link: `/teams/${team._id}`,
-  });
-  // …the new member…
-  await createNotification({
-    user: req.user.id,
-    title: `You joined ${team.name}`,
-    body: `Welcome to team "${team.name}".`,
-    type: 'team_joined',
-    link: `/teams/${team._id}`,
-  });
-  // …and the team that a new member joined.
   const User = require('../models/User');
-  const joiner = await User.findById(req.user.id).select('name');
+  const joiner = await User.findById(joinerId).select('name');
   const joinerName = joiner ? joiner.name : 'A new member';
-  const others = team.members.filter((m) => String(m._id || m) !== String(req.user.id));
+
+  if (request.kind === 'join') {
+    // Notify the joiner…
+    await createNotification({
+      user: joinerId,
+      title: `Request accepted: ${team.name}`,
+      body: `Your request to join "${team.name}" was accepted.`,
+      type: 'request_accepted',
+      link: `/teams/${team._id}`,
+    });
+  } else {
+    // Notify the inviter…
+    await createNotification({
+      user: request.fromUser,
+      title: 'Invite accepted',
+      body: `Your invite to "${team.name}" was accepted.`,
+      type: 'request_accepted',
+      link: `/teams/${team._id}`,
+    });
+    // …and the new member…
+    await createNotification({
+      user: joinerId,
+      title: `You joined ${team.name}`,
+      body: `Welcome to team "${team.name}".`,
+      type: 'team_joined',
+      link: `/teams/${team._id}`,
+    });
+  }
+  // …and the rest of the team.
+  const others = team.members.filter((m) => String(m._id || m) !== String(joinerId));
   for (const memberId of others) {
     await createNotification({
       user: memberId,
@@ -177,12 +270,12 @@ async function acceptRequest(req, res) {
   return res.status(200).json({ request: populated });
 }
 
-// PUT /api/requests/:id/decline (toUser only)
+// PUT /api/requests/:id/decline (approver only: invitee for invites, owner for joins)
 async function declineRequest(req, res) {
   const request = await TeamRequest.findById(req.params.id);
   if (!request) throw httpError(404, 'Request not found');
   if (String(request.toUser) !== String(req.user.id)) {
-    throw httpError(403, 'Only the invited user can decline this request');
+    throw httpError(403, 'Only the recipient can decline this request');
   }
   if (request.status !== 'pending') {
     throw httpError(400, `This request has already been ${request.status}`);
@@ -192,10 +285,14 @@ async function declineRequest(req, res) {
   await request.save();
 
   const team = await Team.findById(request.team).select('name');
+  const teamLabel = team ? `"${team.name}"` : 'the team';
   await createNotification({
     user: request.fromUser,
-    title: 'Invite declined',
-    body: `Your invite to join "${team ? team.name : 'the team'}" was declined.`,
+    title: request.kind === 'join' ? 'Join request declined' : 'Invite declined',
+    body:
+      request.kind === 'join'
+        ? `Your request to join ${teamLabel} was declined.`
+        : `Your invite to join ${teamLabel} was declined.`,
     type: 'request_declined',
     link: '/requests',
   });
@@ -220,6 +317,7 @@ async function cancelRequest(req, res) {
 
 module.exports = {
   createRequest: asyncHandler(createRequest),
+  createJoinRequest: asyncHandler(createJoinRequest),
   listRequests: asyncHandler(listRequests),
   acceptRequest: asyncHandler(acceptRequest),
   declineRequest: asyncHandler(declineRequest),

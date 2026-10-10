@@ -10,6 +10,7 @@ const Team = require('./src/models/Team');
 const TeamRequest = require('./src/models/TeamRequest');
 const Announcement = require('./src/models/Announcement');
 const Notification = require('./src/models/Notification');
+const { generateUniqueJoinCode } = require('./src/utils/joinCode');
 
 const PASSWORD = 'hackmate123';
 const BCRYPT_ROUNDS = 12;
@@ -333,6 +334,7 @@ async function main() {
     members: [s1._id, s4._id, s8._id],
     missingSkills: [{ name: 'MongoDB' }, { name: 'Docker' }],
     isOpen: true,
+    joinCode: await generateUniqueJoinCode(Team),
   });
 
   const t2 = await Team.create({
@@ -343,6 +345,7 @@ async function main() {
     members: [s2._id, s3._id, s6._id, s7._id], // 4/4 — full
     missingSkills: [],
     isOpen: false,
+    joinCode: await generateUniqueJoinCode(Team),
   });
 
   const t3 = await Team.create({
@@ -353,6 +356,7 @@ async function main() {
     members: [s11._id, s6._id, s9._id],
     missingSkills: [{ name: 'UI/UX' }, { name: 'Docker' }],
     isOpen: true,
+    joinCode: await generateUniqueJoinCode(Team),
   });
 
   const t4 = await Team.create({
@@ -363,6 +367,7 @@ async function main() {
     members: [s3._id, s7._id],
     missingSkills: [],
     isOpen: false,
+    joinCode: await generateUniqueJoinCode(Team),
   });
 
   console.log('[seed] creating team requests…');

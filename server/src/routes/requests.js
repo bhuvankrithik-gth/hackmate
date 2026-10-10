@@ -20,6 +20,15 @@ router.post(
   requestController.createRequest
 );
 
+router.post(
+  '/join',
+  validate([
+    v.mongoIdBody('teamId'),
+    body('message').optional().trim().isLength({ max: 500 }),
+  ]),
+  requestController.createJoinRequest
+);
+
 router.get(
   '/',
   validate([

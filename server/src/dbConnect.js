@@ -9,11 +9,51 @@ const LOCAL_URI = 'mongodb://127.0.0.1:27017/hackmate';
 const MEMORY_DBPATH = path.join(os.homedir(), 'workspace', '.cache', 'hackmate-mongo');
 
 let memoryServer = null;
+let migrationsDone = false;
+
+// One-time, idempotent migrations that run after a successful connect
+// (both the long-lived server and the serverless function go through here).
+async function runMigrations() {
+  if (migrationsDone) return;
+  migrationsDone = true;
+
+  // eslint-disable-next-line global-require
+  const Team = require('./models/Team');
+  // eslint-disable-next-line global-require
+  const TeamRequest = require('./models/TeamRequest');
+  // eslint-disable-next-line global-require
+  const { generateUniqueJoinCode } = require('./utils/joinCode');
+
+  // Drop the old dedup index from before request kinds existed
+  // (replaced by the two kind-specific partial unique indexes in the schema).
+  try {
+    await TeamRequest.collection.dropIndex('team_1_toUser_1');
+  } catch (err) {
+    // Already gone — nothing to do.
+  }
+
+  // Backfill joinCode on teams created before invite codes existed.
+  // eslint-disable-next-line no-console
+  const missing = await Team.find({
+    $or: [{ joinCode: { $exists: false } }, { joinCode: null }],
+  }).select('_id');
+  for (const team of missing) {
+    // eslint-disable-next-line no-await-in-loop
+    team.joinCode = await generateUniqueJoinCode(Team);
+    // eslint-disable-next-line no-await-in-loop
+    await team.save();
+  }
+  if (missing.length) {
+    // eslint-disable-next-line no-console
+    console.log(`[db] backfilled joinCode for ${missing.length} team(s)`);
+  }
+}
 
 async function tryConnect(label, uri) {
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 });
   // eslint-disable-next-line no-console
   console.log(`[db] connected (${label})`);
+  await runMigrations();
 }
 
 async function connectDB() {

@@ -3,6 +3,7 @@ const TeamRequest = require('../models/TeamRequest');
 const Hackathon = require('../models/Hackathon');
 const User = require('../models/User');
 const { asyncHandler, httpError } = require('../middleware/errorHandler');
+const { generateUniqueJoinCode } = require('../utils/joinCode');
 
 const MEMBER_PUBLIC_FIELDS = 'name email college branch year skills github linkedin';
 
@@ -51,6 +52,7 @@ async function createTeam(req, res) {
     owner: req.user.id,
     members: [req.user.id],
     missingSkills: missingSkills || [],
+    joinCode: await generateUniqueJoinCode(Team),
   });
 
   const populated = await team.populate('members', MEMBER_PUBLIC_FIELDS);
@@ -196,10 +198,59 @@ async function searchCandidates(req, res) {
   return res.status(200).json({ candidates });
 }
 
+// GET /api/teams/by-code/:code (student) — look up a team by its invite code
+async function getTeamByCode(req, res) {
+  const code = String(req.params.code || '').trim().toUpperCase();
+  if (!code) throw httpError(400, 'Invite code is required');
+
+  const team = await Team.findOne({ joinCode: code })
+    .populate('hackathon', 'title status teamSizeLimit')
+    .populate('owner', 'name')
+    .select('name description hackathon owner members isOpen joinCode');
+  if (!team) throw httpError(404, 'No team found with that invite code');
+
+  const teamSizeLimit = team.hackathon ? team.hackathon.teamSizeLimit : 4;
+  const isMember = team.members.some((m) => String(m._id || m) === String(req.user.id));
+  const otherTeam = await Team.findOne({
+    hackathon: team.hackathon._id,
+    members: req.user.id,
+  }).select('_id name');
+
+  return res.status(200).json({
+    team: {
+      _id: team._id,
+      name: team.name,
+      description: team.description,
+      hackathon: team.hackathon,
+      owner: team.owner,
+      memberCount: team.members.length,
+      teamSizeLimit,
+      isOpen: team.isOpen,
+      joinCode: team.joinCode,
+      isMember,
+      myOtherTeam: otherTeam,
+    },
+  });
+}
+
+// POST /api/teams/:id/regenerate-code (owner only)
+async function regenerateJoinCode(req, res) {
+  const team = await Team.findById(req.params.id);
+  if (!team) throw httpError(404, 'Team not found');
+  if (String(team.owner) !== String(req.user.id)) {
+    throw httpError(403, 'Only the team owner can regenerate the invite code');
+  }
+  team.joinCode = await generateUniqueJoinCode(Team);
+  await team.save();
+  return res.status(200).json({ joinCode: team.joinCode });
+}
+
 module.exports = {
   createTeam: asyncHandler(createTeam),
   myTeams: asyncHandler(myTeams),
   getTeam: asyncHandler(getTeam),
+  getTeamByCode: asyncHandler(getTeamByCode),
+  regenerateJoinCode: asyncHandler(regenerateJoinCode),
   updateTeam: asyncHandler(updateTeam),
   closeTeam: asyncHandler(closeTeam),
   deleteTeam: asyncHandler(deleteTeam),

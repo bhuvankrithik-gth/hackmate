@@ -19,6 +19,96 @@ function Avatar({ name, size = 'w-12 h-12 text-base' }) {
   )
 }
 
+function JoinWithCodeCard({ hackathonId }) {
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [found, setFound] = useState(null)
+  const [error, setError] = useState('')
+  const [joinBusy, setJoinBusy] = useState(false)
+
+  const lookup = async () => {
+    const trimmed = code.trim().toUpperCase()
+    if (!trimmed) {
+      setError('Enter the invite code your friend shared.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    setFound(null)
+    try {
+      const { data } = await api.get(`/teams/by-code/${encodeURIComponent(trimmed)}`)
+      if (String(data.team.hackathon._id) !== String(hackathonId)) {
+        setError('That team is competing in a different hackathon.')
+        return
+      }
+      setFound(data.team)
+    } catch (err) {
+      setError(apiError(err, 'Could not find that team.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const requestJoin = async () => {
+    if (!found) return
+    setJoinBusy(true)
+    try {
+      await api.post('/requests/join', { teamId: found._id })
+      toast.success(`Request sent to ${found.name} 🎉 — the owner will review it. Check Requests for updates.`)
+      setFound(null)
+      setCode('')
+    } catch (err) {
+      toast.error(apiError(err, 'Could not send the request.'))
+    } finally {
+      setJoinBusy(false)
+    }
+  }
+
+  return (
+    <div className="glass rounded-2xl p-6 text-center border-dashed !border-cyan-500/40">
+      <div className="text-3xl mb-2">🔑</div>
+      <h3 className="font-bold text-slate-900 dark:text-white">Have a friend&rsquo;s invite code?</h3>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 mb-4">
+        Drop it here to find their team and request a spot.
+      </p>
+      <div className="flex gap-2 max-w-sm mx-auto">
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          onKeyDown={(e) => { if (e.key === 'Enter') lookup() }}
+          placeholder="e.g. XK7Q2P"
+          maxLength={12}
+          className="input font-mono uppercase tracking-widest text-center"
+        />
+        <button onClick={lookup} disabled={busy} className="btn-secondary shrink-0">
+          {busy ? '…' : 'Find'}
+        </button>
+      </div>
+      {error && <p className="mt-2.5 text-xs text-red-500">{error}</p>}
+      {found && (
+        <div className="mt-4 glass-soft rounded-xl p-4 text-left max-w-sm mx-auto">
+          <p className="font-semibold text-slate-900 dark:text-white text-sm">{found.name}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            👑 {found.owner?.name} · 👥 {found.memberCount}/{found.teamSizeLimit} members
+            {found.isOpen === false && ' · 🔒 closed'}
+          </p>
+          {found.isMember ? (
+            <p className="mt-3 text-xs text-emerald-600 dark:text-emerald-400 font-medium">✅ You&rsquo;re already in this team.</p>
+          ) : found.myOtherTeam ? (
+            <p className="mt-3 text-xs text-amber-600 dark:text-amber-400 font-medium">
+              ⚠ You&rsquo;re already in “{found.myOtherTeam.name}” for this hackathon.
+            </p>
+          ) : (
+            <button onClick={requestJoin} disabled={joinBusy || found.isOpen === false} className="btn-primary btn-sm w-full mt-3">
+              {joinBusy ? 'Sending…' : 'Request to join →'}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function CreateTeamCard({ hackathonId, onCreated }) {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ name: '', description: '', missingSkills: [] })
@@ -254,8 +344,9 @@ export default function FindTeammates() {
       </div>
 
       {!teamId && hackathonId && (
-        <div className="mb-6">
+        <div className="mb-6 grid gap-6 md:grid-cols-2">
           <CreateTeamCard hackathonId={hackathonId} onCreated={(t) => { setTeams((ts) => [...ts, t]); setTeamId(t._id) }} />
+          <JoinWithCodeCard hackathonId={hackathonId} />
         </div>
       )}
 

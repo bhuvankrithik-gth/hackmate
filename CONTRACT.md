@@ -14,7 +14,7 @@ Project root: `~/workspace/hackmate`
 
 ### Auth
 - `POST /api/auth/register/student` body: `{name,email,password,college,branch,year,skills:[{name,level}],github,linkedin,bio}` → 201 `{token,user}`
-- `POST /api/auth/register/host` body: `{name,organization,email,password}` → 201 `{token,user}`
+- `POST /api/auth/register/host` body: `{name,organization,email,password}` → 201 `{pendingApproval:true,user}` (no token — host accounts are approval-gated: `hostStatus` pending → admin approves/rejects via `GET /api/users/host-requests`, `POST /api/users/host-requests/:id/approve|reject`; pending/rejected hosts get 403 at login and on all host routes, checked against the DB)
 - `POST /api/auth/login` body: `{email,password}` → 200 `{token,user}`
 - `GET /api/auth/me` (auth) → 200 `{user}`
 - Skill levels ∈ `Beginner | Intermediate | Advanced`
@@ -62,7 +62,7 @@ Project root: `~/workspace/hackmate`
 All errors: `{error: "Human readable message", details?: [...]}` with proper HTTP codes (400 validation, 401 unauth, 403 forbidden, 404, 409 conflict, 429 rate limit, 500).
 
 ## Security
-bcrypt (10+ rounds), JWT_SECRET from env, helmet, cors, express-rate-limit on `/api/auth/*` (e.g. 100 req/15min), input validation (express-validator), never leak passwordHash, Mongo injection-safe queries.
+bcrypt (10+ rounds), JWT_SECRET from env, helmet, cors, express-rate-limit on POST `/api/auth/*` (300 req/15min; GETs not counted), input validation (express-validator), never leak passwordHash, Mongo injection-safe queries.
 
 ## Seed data
 `npm run seed` (server): 1 host, 12 students (varied skills/levels/colleges), 5 hackathons (2 open, 1 closing soon — deadline within 24h, 2 closed), several teams (some full, some with open spots), pending + accepted team requests, announcements, notifications. Print credentials:
@@ -73,7 +73,7 @@ bcrypt (10+ rounds), JWT_SECRET from env, helmet, cors, express-rate-limit on `/
 - `/` Landing (hero, how-it-works, CTA, footer)
 - `/login`, `/register` (student/host toggle)
 - Student: `/dashboard` (redirect), `/hackathons`, `/hackathons/:id`, `/find-teammates?hackathonId=&teamId=`, `/teams/:id` (My Team), `/requests` (sent/received tabs), `/profile`, `/notifications`
-- Host: `/host` (Host Dashboard: hackathon list + stats), `/host/hackathons/new`, `/host/hackathons/:id/edit`, `/host/hackathons/:id` (manage: participants, teams, announcements, export CSV)
+- Host: `/host` (Host Dashboard: hackathon list + stats), `/host/requests` (admin-only Host approvals queue), `/host/hackathons/new`, `/host/hackathons/:id/edit`, `/host/hackathons/:id` (manage: participants, teams, announcements, export CSV)
 - Shared components: Navbar (logo, links by role, notification bell w/ unread count, dark/light toggle persisted in localStorage `hackmate_theme`), AnimatedBackground (particles/gradient canvas), MatchRing (SVG circular progress; red <40, orange 40–70, green >70), CountdownTimer (live ticking to registrationDeadline), Skeleton loaders, Toast (react-hot-toast), EmptyState, ProtectedRoute, RoleRoute.
 - Theme: Tailwind `dark` class strategy; neon purple (#a855f7 family) + cyan (#22d3ee) on dark glassmorphism cards; light mode variant of same theme.
 

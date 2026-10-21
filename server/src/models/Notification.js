@@ -8,6 +8,7 @@ const NOTIFICATION_TYPES = [
   'request_declined',
   'announcement',
   'team_joined',
+  'host_approval',
 ];
 
 const notificationSchema = new Schema(

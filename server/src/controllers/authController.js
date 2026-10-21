@@ -8,7 +8,23 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const BCRYPT_ROUNDS = 12;
 const SAFE_USER_FIELDS =
-  'name email role college branch year skills github linkedin bio organization createdAt';
+  'name email role college branch year skills github linkedin bio organization hostStatus isAdmin createdAt';
+
+// Host approval gate: pending/rejected hosts get no session until an admin
+// approves them. Returns an httpError to throw, or null when access is fine.
+function hostGateError(user) {
+  if (user.role !== 'host' || user.hostStatus === 'approved') return null;
+  if (user.hostStatus === 'pending') {
+    return httpError(
+      403,
+      'Your host account is pending approval. An admin needs to approve it before you can log in — please check back soon.'
+    );
+  }
+  return httpError(
+    403,
+    'Your host account was not approved. Please contact the HackMate admin if you think this is a mistake.'
+  );
+}
 
 async function registerStudent(req, res) {
   const { name, email, password, college, branch, year, skills, github, linkedin, bio } = req.body;
@@ -49,11 +65,12 @@ async function registerHost(req, res) {
     passwordHash,
     role: 'host',
     organization,
+    hostStatus: 'pending',
     termsAcceptedAt: new Date(),
   });
 
-  const token = signToken(user);
-  return res.status(201).json({ token, user: user.toJSON() });
+  // No token yet: the account becomes usable only after admin approval.
+  return res.status(201).json({ pendingApproval: true, user: user.toJSON() });
 }
 
 async function login(req, res) {
@@ -71,6 +88,9 @@ async function login(req, res) {
     if (!user.passwordHash) throw httpError(401, 'This account uses Google sign-in. Please continue with Google.');
     throw httpError(401, 'Invalid email or password');
   }
+
+  const gate = hostGateError(user);
+  if (gate) throw gate;
 
   const token = signToken(user);
   const safe = user.toObject();
@@ -141,11 +161,18 @@ async function googleAuth(req, res) {
       termsAcceptedAt: new Date(),
       ...(finalRole === 'student'
         ? { college, branch, year, skills: skills || [], github, linkedin, bio }
-        : { organization }),
+        : { organization, hostStatus: 'pending' }),
     });
+    if (finalRole === 'host') {
+      // Host accounts need admin approval first — no session yet.
+      return res.status(201).json({ pendingApproval: true, user: user.toJSON() });
+    }
     const token = signToken(user);
     return res.status(201).json({ token, user: user.toJSON() });
   }
+
+  const gate = hostGateError(user);
+  if (gate) throw gate;
 
   const token = signToken(user);
   return res.status(200).json({ token, user: user.toJSON() });

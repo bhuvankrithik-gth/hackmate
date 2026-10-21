@@ -26,17 +26,22 @@ app.use(
 );
 app.use(express.json({ limit: '1mb' }));
 
-// Rate-limit auth endpoints: 100 requests per 15 minutes per IP.
+// Rate-limit auth writes: 300 POSTs per 15 minutes per IP.
+// (Was 100 for ALL /api/auth requests including GET /auth/me — on a shared
+// campus NAT, many students share one public IP and normal page loads kept
+// burning the budget, so legitimate logins started failing with 429.)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 100,
-  max: 100, // v6 option name, harmless on v7+
+  limit: 300,
+  max: 300, // v6 option name, harmless on v7+
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   handler: (req, res) =>
     res.status(429).json({ error: 'Too many requests, please try again later.' }),
 });
-app.use('/api/auth', authLimiter);
+app.use('/api/auth', (req, res, next) =>
+  req.method === 'POST' ? authLimiter(req, res, next) : next()
+);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, service: 'hackmate-server' }));
 

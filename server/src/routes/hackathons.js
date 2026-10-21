@@ -1,7 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const hackathonController = require('../controllers/hackathonController');
-const { requireAuth, optionalAuth, requireRole } = require('../middleware/auth');
+const { requireAuth, optionalAuth, requireRole, requireApprovedHost } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const v = require('./validators');
 
@@ -36,7 +36,7 @@ router.get('/', optionalAuth, hackathonController.listHackathons);
 router.post(
   '/',
   requireAuth,
-  requireRole('host'),
+  requireApprovedHost,
   validate(hackathonBody(true)),
   hackathonController.createHackathon
 );
@@ -46,7 +46,7 @@ router.get('/:id', optionalAuth, validate([v.mongoIdParam()]), hackathonControll
 router.put(
   '/:id',
   requireAuth,
-  requireRole('host'),
+  requireApprovedHost,
   validate([v.mongoIdParam(), ...hackathonBody(false)]),
   hackathonController.updateHackathon
 );
@@ -54,7 +54,7 @@ router.put(
 router.delete(
   '/:id',
   requireAuth,
-  requireRole('host'),
+  requireApprovedHost,
   validate([v.mongoIdParam()]),
   hackathonController.deleteHackathon
 );
@@ -70,7 +70,7 @@ router.post(
 router.get(
   '/:id/participants',
   requireAuth,
-  requireRole('host'),
+  requireApprovedHost,
   validate([v.mongoIdParam()]),
   hackathonController.getParticipants
 );
@@ -78,7 +78,7 @@ router.get(
 router.get(
   '/:id/teams',
   requireAuth,
-  requireRole('host'),
+  requireApprovedHost,
   validate([v.mongoIdParam()]),
   hackathonController.getHackathonTeams
 );
@@ -86,7 +86,7 @@ router.get(
 router.get(
   '/:id/participants/export',
   requireAuth,
-  requireRole('host'),
+  requireApprovedHost,
   validate([v.mongoIdParam()]),
   hackathonController.exportParticipants
 );
@@ -101,7 +101,7 @@ router.get(
 router.post(
   '/:id/announcements',
   requireAuth,
-  requireRole('host'),
+  requireApprovedHost,
   validate([
     v.mongoIdParam(),
     body('title').notEmpty().withMessage('title is required').trim().isLength({ max: 140 }),

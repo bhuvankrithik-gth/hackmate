@@ -18,6 +18,7 @@ import Requests from './pages/Requests.jsx'
 import Profile from './pages/Profile.jsx'
 import Notifications from './pages/Notifications.jsx'
 import HostDashboard from './pages/host/HostDashboard.jsx'
+import HostRequests from './pages/host/HostRequests.jsx'
 import HackathonForm from './pages/host/HackathonForm.jsx'
 import HackathonManage from './pages/host/HackathonManage.jsx'
 import NotFound from './pages/NotFound.jsx'
@@ -73,6 +74,7 @@ export default function App() {
 
             {/* ---- host routes ---- */}
             <Route path="/host" element={<RoleRoute role="host"><Page><HostDashboard /></Page></RoleRoute>} />
+            <Route path="/host/requests" element={<RoleRoute role="host"><Page><HostRequests /></Page></RoleRoute>} />
             <Route path="/host/hackathons/new" element={<RoleRoute role="host"><Page><HackathonForm /></Page></RoleRoute>} />
             <Route path="/host/hackathons/:id/edit" element={<RoleRoute role="host"><Page><HackathonForm /></Page></RoleRoute>} />
             <Route path="/host/hackathons/:id" element={<RoleRoute role="host"><Page><HackathonManage /></Page></RoleRoute>} />

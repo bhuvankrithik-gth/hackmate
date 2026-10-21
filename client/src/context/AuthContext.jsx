@@ -62,14 +62,23 @@ export function AuthProvider({ children }) {
     return data.user
   }
 
+  // Host signups are approval-gated: the API returns { pendingApproval: true }
+  // with no token until an admin approves the account. In that case we return
+  // { pendingApproval: true, user } and deliberately do NOT log the user in.
   const registerHost = async (payload) => {
     const { data } = await api.post('/auth/register/host', payload)
+    if (data.pendingApproval || !data.token) {
+      return { pendingApproval: true, user: data.user }
+    }
     applyAuth({ token: data.token, user: data.user })
     return data.user
   }
 
   const googleAuth = async (payload) => {
     const { data } = await api.post('/auth/google', payload)
+    if (data.pendingApproval || !data.token) {
+      return { pendingApproval: true, user: data.user }
+    }
     applyAuth({ token: data.token, user: data.user })
     return data.user
   }

@@ -214,6 +214,8 @@ async function main() {
     email: 'host@hackmate.demo',
     passwordHash,
     role: 'host',
+    hostStatus: 'approved',
+    isAdmin: true, // demo host doubles as the host-approval admin
   });
 
   const students = [];

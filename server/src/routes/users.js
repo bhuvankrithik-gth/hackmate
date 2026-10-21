@@ -1,7 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const userController = require('../controllers/userController');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const v = require('./validators');
 
@@ -26,6 +26,23 @@ router.put(
     body('bio').optional().trim().isLength({ max: 1000 }),
   ]),
   userController.updateMe
+);
+
+// Admin-only host approval queue.
+router.get('/host-requests', requireAuth, requireAdmin, userController.listHostRequests);
+router.post(
+  '/host-requests/:id/approve',
+  requireAuth,
+  requireAdmin,
+  validate([v.mongoIdParam()]),
+  userController.approveHost
+);
+router.post(
+  '/host-requests/:id/reject',
+  requireAuth,
+  requireAdmin,
+  validate([v.mongoIdParam(), body('note').optional().trim().isLength({ max: 300 })]),
+  userController.rejectHost
 );
 
 module.exports = router;

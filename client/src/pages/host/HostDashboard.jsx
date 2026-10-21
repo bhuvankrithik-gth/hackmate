@@ -27,6 +27,7 @@ function StatCard({ icon, label, value, accent }) {
 export default function HostDashboard() {
   const { user } = useAuth()
   const [hackathons, setHackathons] = useState([])
+  const [pendingHosts, setPendingHosts] = useState(0)
   const [loading, setLoading] = useState(true)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
@@ -46,6 +47,15 @@ export default function HostDashboard() {
   useEffect(() => {
     load()
   }, [load])
+
+  // Admins also see how many host accounts are waiting for approval.
+  useEffect(() => {
+    if (!user?.isAdmin) return
+    api
+      .get('/users/host-requests')
+      .then(({ data }) => setPendingHosts((data.pending || []).length))
+      .catch(() => {})
+  }, [user?.isAdmin])
 
   const doDelete = async () => {
     if (!deleteTarget) return
@@ -81,6 +91,20 @@ export default function HostDashboard() {
         </div>
         <Link to="/host/hackathons/new" className="btn-primary">+ New hackathon</Link>
       </div>
+
+      {user?.isAdmin && pendingHosts > 0 && (
+        <Link
+          to="/host/requests"
+          className="glass rounded-2xl px-5 py-4 mb-7 flex items-center gap-3 hover:border-amber-500/50 transition-all"
+        >
+          <span className="text-2xl">⏳</span>
+          <span className="text-sm text-slate-600 dark:text-slate-300">
+            <span className="font-bold text-slate-900 dark:text-white">{pendingHosts} host account{pendingHosts === 1 ? '' : 's'}</span>{' '}
+            waiting for your approval — they can&rsquo;t log in or create hackathons until you approve them.
+          </span>
+          <span className="ml-auto font-semibold text-purple-500 dark:text-purple-300 text-sm shrink-0">Review →</span>
+        </Link>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard icon="🏟️" label="Hackathons" value={stats.total} accent="bg-purple-500" />

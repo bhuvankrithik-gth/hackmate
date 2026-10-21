@@ -24,6 +24,7 @@ export default function Register() {
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [agreed, setAgreed] = useState(false)
+  const [hostPending, setHostPending] = useState(false)
 
   const switchRole = (r) => {
     setRole(r)
@@ -95,7 +96,12 @@ export default function Register() {
               bio: form.bio.trim(),
             }
           : { idToken, mode: 'signup', role: 'host', organization: form.organization.trim() }
-      const user = await googleAuth(payload)
+      const result = await googleAuth(payload)
+      if (result?.pendingApproval) {
+        setHostPending(true)
+        return
+      }
+      const user = result
       toast.success(`Welcome aboard, ${user.name.split(' ')[0]}! 🎉`)
       goAfterSignup(user)
     } catch (err) {
@@ -128,12 +134,17 @@ export default function Register() {
           bio: form.bio.trim(),
         })
       } else {
-        user = await registerHost({
+        const result = await registerHost({
           name: form.name.trim(),
           organization: form.organization.trim(),
           email: form.email.trim(),
           password: form.password,
         })
+        if (result?.pendingApproval) {
+          setHostPending(true)
+          return
+        }
+        user = result
       }
       toast.success(`Welcome aboard, ${user.name.split(' ')[0]}! 🎉`)
       navigate(user.role === 'host' ? '/host' : '/hackathons', { replace: true })
@@ -142,6 +153,26 @@ export default function Register() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (hostPending) {
+    return (
+      <div className="page-shell py-16 flex justify-center">
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-md text-center">
+          <div className="glass rounded-2xl p-8">
+            <div className="text-5xl mb-4">⏳</div>
+            <h1 className="section-title mb-3">Host request submitted</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">
+              Thanks! Host accounts on HackMate need a quick admin approval first — this keeps fake hackathons off the platform.
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              Once you&rsquo;re approved, just log in with the same email and you can start creating hackathons. If you try to log in before that, you&rsquo;ll see a &ldquo;pending approval&rdquo; message.
+            </p>
+            <Link to="/login" className="btn-primary w-full !py-3">Go to login →</Link>
+          </div>
+        </motion.div>
+      </div>
+    )
   }
 
   return (
@@ -263,6 +294,7 @@ export default function Register() {
                   </div>
                   <div className="sm:col-span-2 glass-soft rounded-xl p-4 text-sm text-slate-500 dark:text-slate-400">
                     🛠️ As a host you can <span className="text-slate-700 dark:text-slate-200 font-medium">create hackathons</span>, manage participants & teams, publish announcements and export registrations as CSV.
+                    <span className="block mt-2">🛡️ Host accounts are <span className="text-slate-700 dark:text-slate-200 font-medium">approved by an admin</span> before they can log in — this keeps fake hackathons off HackMate.</span>
                   </div>
                 </>
               )}

@@ -29,6 +29,19 @@ const userSchema = new Schema(
     bio: { type: String, trim: true, maxlength: 1000 },
     // host profile
     organization: { type: String, trim: true },
+    // Host approval gate: new host accounts start 'pending' and cannot log
+    // in or create hackathons until an admin approves them. Students are
+    // always 'approved' (the field is ignored for them). Existing hosts from
+    // before this feature were backfilled to 'approved' by a db migration.
+    hostStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'approved',
+    },
+    hostStatusNote: { type: String, trim: true }, // set on reject, shown to the host
+    // Admins (approvers) — the demo host is promoted by a db migration and
+    // additional admin emails can be listed in the ADMIN_EMAILS env var.
+    isAdmin: { type: Boolean, default: false },
     // legal: when the user accepted the Terms of Service & Privacy Policy
     termsAcceptedAt: { type: Date, default: null },
   },

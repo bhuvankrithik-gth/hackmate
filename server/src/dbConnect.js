@@ -47,6 +47,33 @@ async function runMigrations() {
     // eslint-disable-next-line no-console
     console.log(`[db] backfilled joinCode for ${missing.length} team(s)`);
   }
+
+  // Host approval feature (added later): accounts that existed before it
+  // have no hostStatus — treat them as approved so nobody working gets
+  // locked out. Only NEW host signups start out 'pending'.
+  // eslint-disable-next-line global-require
+  const User = require('./models/User');
+  const backfilled = await User.updateMany(
+    { $or: [{ hostStatus: { $exists: false } }, { hostStatus: null }] },
+    { $set: { hostStatus: 'approved' } }
+  );
+  if (backfilled.modifiedCount) {
+    // eslint-disable-next-line no-console
+    console.log(`[db] backfilled hostStatus=approved for ${backfilled.modifiedCount} user(s)`);
+  }
+
+  // Promote admin (approver) accounts: ADMIN_EMAILS env (comma-separated),
+  // falling back to the demo host account.
+  const adminEmails = (process.env.ADMIN_EMAILS || 'host@hackmate.demo')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (adminEmails.length) {
+    await User.updateMany(
+      { email: { $in: adminEmails } },
+      { $set: { isAdmin: true, hostStatus: 'approved' } }
+    );
+  }
 }
 
 async function tryConnect(label, uri) {

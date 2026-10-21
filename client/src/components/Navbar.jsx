@@ -37,6 +37,7 @@ const studentLinks = [
 ]
 
 const hostLinks = [{ to: '/host', label: 'Dashboard' }]
+const adminLinks = [{ to: '/host/requests', label: 'Host approvals' }]
 
 function linkCls({ isActive }) {
   return `px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -78,7 +79,11 @@ export default function Navbar() {
     }
   }, [isAuthed])
 
-  const links = isHost ? hostLinks : isStudent ? studentLinks : []
+  const links = isHost
+    ? [...hostLinks, ...(user?.isAdmin ? adminLinks : [])]
+    : isStudent
+      ? studentLinks
+      : []
 
   const handleLogout = () => {
     logout()

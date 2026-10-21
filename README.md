@@ -35,8 +35,10 @@ CLIENT_ORIGIN=http://localhost:5173
 
 ## Demo credentials (created by `npm run seed`)
 
-- Host: `host@hackmate.demo` / `hackmate123`
+- Host (also the admin who approves new hosts): `host@hackmate.demo` / `hackmate123`
 - Students: `student1@hackmate.demo` … `student12@hackmate.demo` / `hackmate123`
+
+**Host approval:** new host accounts (password or Google sign-up) start as *pending* — they cannot log in or create hackathons until an admin approves them on the **Host approvals** page (`/host/requests`). Admins can also reject a request or revoke an already-approved host (effective immediately, even for an existing login token). Admin accounts are the emails in the `ADMIN_EMAILS` env var (comma-separated), defaulting to `host@hackmate.demo`; hosts who existed before this feature were auto-approved by a database migration.
 
 Seed data: 1 host, 12 students with varied skills/colleges, 5 hackathons (2 open, 1 closing within 24h, 2 closed), several teams (one full), pending/accepted/declined team requests, announcements and notifications.
 
@@ -70,4 +72,6 @@ Teams: `POST /api/teams`, `GET /api/teams/my`, `GET /api/teams/:id`, `PUT /api/t
 Requests: `POST /api/requests`, `GET /api/requests?tab=sent|received`, `PUT /api/requests/:id/accept|decline`, `DELETE /api/requests/:id`.
 Users/notifications: `GET|PUT /api/users/me`, `GET /api/notifications`, `PUT /api/notifications/:id/read`, `GET /api/notifications/unread-count`.
 
-All errors are `{error, details?}` with proper HTTP codes. Auth routes are rate-limited (100 requests / 15 min).
+Users/admin: `GET /api/users/host-requests`, `POST /api/users/host-requests/:id/approve`, `POST /api/users/host-requests/:id/reject` (admin only).
+
+All errors are `{error, details?}` with proper HTTP codes. Auth writes (POSTs) are rate-limited (300 requests / 15 min per IP); reads like `GET /api/auth/me` are not counted, so shared campus networks don't burn the budget on page loads.
